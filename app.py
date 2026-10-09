@@ -288,9 +288,394 @@ def run_live(query: str, guard_on: bool, docs: list[dict[str, Any]], progress=No
     return {"query": query, "docs": active_docs, "steps": steps, "verdict": "STOPPED", "answer": "Stopped after the six-step safety limit."}
 
 
-st.set_page_config(page_title="RAG Security Gate Prototype", page_icon="🛡️", layout="wide")
-st.title("🛡️ RAG Supply-Chain Security Prototype")
-st.caption("Every tool call passes a local policy gate, and the run shows the sources and trust levels behind its arguments.")
+st.set_page_config(
+    page_title="RAG Supply-Chain Security Prototype",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# Custom CSS for Hitit + Visuvate inspired premium dark glassmorphic UI
+CUSTOM_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* Root Variables & Color Palette */
+:root {
+    --bg-main: #090B10;
+    --bg-card: rgba(17, 21, 33, 0.72);
+    --bg-card-hover: rgba(24, 29, 46, 0.85);
+    --border-glass: rgba(255, 255, 255, 0.08);
+    --border-glass-bright: rgba(255, 255, 255, 0.16);
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+    --accent-amber: #F59E0B;
+    --accent-amber-glow: rgba(245, 158, 11, 0.25);
+    --accent-blue: #3B82F6;
+    --accent-cyan: #06B6D4;
+    --accent-crimson: #E11D48;
+    --accent-emerald: #10B981;
+}
+
+/* Global App Container & Ambient Background */
+.stApp {
+    background-color: var(--bg-main) !important;
+    background-image: 
+        radial-gradient(circle at 85% 8%, rgba(245, 158, 11, 0.14) 0%, rgba(217, 119, 6, 0.05) 30%, transparent 60%),
+        radial-gradient(circle at 12% 18%, rgba(59, 130, 246, 0.12) 0%, rgba(99, 102, 241, 0.04) 35%, transparent 65%),
+        radial-gradient(circle at 50% 95%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
+        linear-gradient(180deg, #090B10 0%, #0D1017 100%) !important;
+    background-attachment: fixed !important;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    color: var(--text-primary) !important;
+}
+
+/* Typography Overrides */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif !important;
+    letter-spacing: -0.02em !important;
+    color: var(--text-primary) !important;
+}
+
+p, span, label, div {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+code, pre {
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Hide default streamlit header decoration */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+}
+
+/* Top Hero Header Component */
+.hero-container {
+    background: linear-gradient(135deg, rgba(22, 27, 43, 0.7) 0%, rgba(15, 18, 29, 0.85) 100%);
+    border: 1px solid var(--border-glass);
+    border-radius: 24px;
+    padding: 36px 40px 32px 40px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(24px);
+}
+
+.hero-container::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 250px;
+    height: 250px;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.2) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.hero-badge-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.hero-pill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #E2E8F0;
+    backdrop-filter: blur(12px);
+}
+
+.hero-pill-badge .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10B981;
+    box-shadow: 0 0 10px #10B981;
+    animation: pulse-dot 2s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+.hero-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.6rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    background: linear-gradient(180deg, #FFFFFF 20%, #CBD5E1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+}
+
+.hero-subtitle {
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 850px;
+    margin-bottom: 24px;
+}
+
+.hero-stats-row {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hero-stat-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.hero-stat-number {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #FFFFFF;
+}
+
+.hero-stat-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.hero-stat-divider {
+    color: rgba(255, 255, 255, 0.15);
+    font-size: 1.2rem;
+}
+
+/* Sidebar Custom Styling */
+section[data-testid="stSidebar"] {
+    background-color: rgba(12, 15, 24, 0.88) !important;
+    border-right: 1px solid var(--border-glass) !important;
+    backdrop-filter: blur(25px) !important;
+}
+
+section[data-testid="stSidebar"] .stMarkdown h2 {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
+    margin-bottom: 16px !important;
+}
+
+/* Glass Cards & Containers */
+div[data-testid="stExpander"] {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-glass) !important;
+    border-radius: 16px !important;
+    margin-bottom: 12px !important;
+    backdrop-filter: blur(20px) !important;
+    transition: all 0.25s ease !important;
+    overflow: hidden !important;
+}
+
+div[data-testid="stExpander"]:hover {
+    border-color: var(--border-glass-bright) !important;
+    background: var(--bg-card-hover) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+}
+
+div[data-testid="stExpander"] summary {
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    padding: 14px 18px !important;
+    color: #E2E8F0 !important;
+}
+
+/* Input Fields & Text Areas */
+div[data-testid="stTextArea"] textarea {
+    background: rgba(14, 18, 28, 0.75) !important;
+    border: 1px solid var(--border-glass) !important;
+    border-radius: 14px !important;
+    color: #F8FAFC !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-size: 0.95rem !important;
+    padding: 14px 16px !important;
+    transition: all 0.2s ease !important;
+    backdrop-filter: blur(16px) !important;
+}
+
+div[data-testid="stTextArea"] textarea:focus {
+    border-color: var(--accent-blue) !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25), 0 8px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Buttons - Premium Pill Style */
+div.stButton > button {
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    color: #FFFFFF !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 9999px !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    letter-spacing: 0.02em !important;
+    padding: 12px 28px !important;
+    height: 48px !important;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+div.stButton > button:hover {
+    transform: translateY(-2px) !important;
+    background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%) !important;
+    box-shadow: 0 12px 28px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+div.stButton > button:active {
+    transform: translateY(0) !important;
+}
+
+/* Code Snippets & JSON Blocks */
+div[data-testid="stCodeBlock"] {
+    border-radius: 14px !important;
+    border: 1px solid var(--border-glass) !important;
+    background: rgba(10, 13, 20, 0.85) !important;
+    backdrop-filter: blur(16px) !important;
+    overflow: hidden !important;
+}
+
+div[data-testid="stJson"] {
+    background: rgba(10, 13, 20, 0.85) !important;
+    border: 1px solid var(--border-glass) !important;
+    border-radius: 14px !important;
+    padding: 12px !important;
+}
+
+/* Alert Boxes & Verdict Banners */
+div[data-testid="stAlert"] {
+    border-radius: 16px !important;
+    backdrop-filter: blur(20px) !important;
+    border: 1px solid var(--border-glass) !important;
+    padding: 18px 20px !important;
+}
+
+div[data-testid="stAlert"] [data-testid="stNotificationContentError"] {
+    background: rgba(225, 29, 72, 0.12) !important;
+    border-color: rgba(225, 29, 72, 0.35) !important;
+    color: #FECDD3 !important;
+}
+
+div[data-testid="stAlert"] [data-testid="stNotificationContentSuccess"] {
+    background: rgba(16, 185, 129, 0.12) !important;
+    border-color: rgba(16, 185, 129, 0.35) !important;
+    color: #A7F3D0 !important;
+}
+
+div[data-testid="stAlert"] [data-testid="stNotificationContentWarning"] {
+    background: rgba(245, 158, 11, 0.12) !important;
+    border-color: rgba(245, 158, 11, 0.35) !important;
+    color: #FDE68A !important;
+}
+
+/* Dataframe Styling */
+div[data-testid="stDataFrame"] {
+    border: 1px solid var(--border-glass) !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    background: rgba(14, 18, 28, 0.7) !important;
+}
+
+/* Trust Tier Badges */
+.tier-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.tier-1 {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.tier-2 {
+    background: rgba(245, 158, 11, 0.15);
+    color: #FBBF24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.tier-3 {
+    background: rgba(239, 68, 68, 0.15);
+    color: #F87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Custom Divider */
+hr {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    margin: 28px 0 !important;
+}
+</style>
+"""
+
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+# Custom Hero Component combining Hitit & Visuvate Design Language
+HERO_HTML = """
+<div class="hero-container">
+    <div class="hero-badge-row">
+        <div class="hero-pill-badge">
+            <span class="dot"></span>
+            Zero-Trust Gateway Active
+        </div>
+        <div class="hero-pill-badge" style="border-color: rgba(245, 158, 11, 0.3); color: #FBBF24;">
+            🛡️ Local Interception Mode
+        </div>
+    </div>
+    <div class="hero-title">Crafting Resilient AI & RAG Supply-Chain Security</div>
+    <div class="hero-subtitle">
+        Every tool call passes through a runtime policy gateway. The engine tracks precise document and database provenance, intercepts untrusted side-effects, and secures agent actions.
+    </div>
+    <div class="hero-stats-row">
+        <div class="hero-stat-item">
+            <span class="hero-stat-number">3</span>
+            <span class="hero-stat-label">Trust Tiers</span>
+        </div>
+        <span class="hero-stat-divider">|</span>
+        <div class="hero-stat-item">
+            <span class="hero-stat-number">100%</span>
+            <span class="hero-stat-label">Policy Intercept</span>
+        </div>
+        <span class="hero-stat-divider">|</span>
+        <div class="hero-stat-item">
+            <span class="hero-stat-number">Zero-Trust</span>
+            <span class="hero-stat-label">Execution Sandbox</span>
+        </div>
+    </div>
+</div>
+"""
+st.markdown(HERO_HTML, unsafe_allow_html=True)
 
 with st.sidebar:
     st.header("Demo controls")
@@ -299,7 +684,7 @@ with st.sidebar:
     scenario = st.radio("Guided scenario", ["Poisoned document attack", "Bulk database read attempt", "Benign incident summary", "HTTP data-exfiltration attempt", "Database write attempt"], disabled=mode != "Guided demo")
     st.info("All customer records are fictional. Email, HTTP requests, and database writes are simulated; no message is sent, no network call is made, and no database is changed.")
 
-left, right = st.columns([1, 1])
+left, right = st.columns([1, 1], gap="medium")
 with left:
     st.subheader("Attack story")
     st.write("A retrieved external email contains a hidden instruction to export customer data to an attacker-controlled address. The gate checks every tool before it runs.")
@@ -307,7 +692,8 @@ with left:
     st.subheader("Seeded documents")
     for doc in DOCS:
         label = {1: "TRUSTED", 2: "INTERNAL", 3: "UNTRUSTED"}.get(doc["tier"], "UNKNOWN")
-        with st.expander(f"Tier {doc['tier']} · {label} · {doc['title']}"):
+        badge_icon = {1: "🟢", 2: "🟡", 3: "🔴"}.get(doc["tier"], "⚪")
+        with st.expander(f"{badge_icon} Tier {doc['tier']} · {label} · {doc['title']}"):
             st.caption(f"{doc['doc_id']} | {doc['source']}")
             st.write(doc["text"])
 
@@ -408,3 +794,5 @@ if result:
             if not step.get("args") and not step.get("provenance"):
                 st.json(step)
     st.caption("Audit log is appended to logs/runs.jsonl")
+
+
