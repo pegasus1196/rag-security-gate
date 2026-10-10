@@ -1,6 +1,6 @@
 # RAG Supply-Chain Security Demo
 
-A local hackathon prototype for demonstrating how retrieved instructions can try to make an AI agent misuse tools. The local policy gateway checks each proposed tool call, records where argument values came from, and applies trust labels to retrieved documents.
+A Ignisia Inccubex Hackathon Protoype developed for demonstrating how retrieved instructions can try to make an AI agent misuse tools. The local policy gateway checks each proposed tool call, records where argument values came from, and applies trust labels to retrieved documents.
 
 ## Open in VS Code
 
